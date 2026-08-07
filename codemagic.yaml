@@ -1,0 +1,74 @@
+# From Seed to Supper — iOS via Codemagic (no FlutterFlow)
+# Env group "global": CERTIFICATE_PRIVATE_KEY, APP_STORE_CONNECT_PRIVATE_KEY,
+# APP_STORE_CONNECT_KEY_IDENTIFIER, APP_STORE_CONNECT_ISSUER_ID
+
+workflows:
+  fsts-ios:
+    name: Seed to Supper iOS
+    instance_type: mac_mini_m2
+    max_build_duration: 120
+    # Flutter project is this repo root
+    environment:
+      groups:
+        - global
+      vars:
+        BUNDLE_ID: store.mixapps.seedtosupper
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Get packages
+        script: |
+          flutter pub get
+      - name: Verify bundle ID
+        script: |
+          set -e
+          grep -q "PRODUCT_BUNDLE_IDENTIFIER = ${BUNDLE_ID}" ios/Runner.xcodeproj/project.pbxproj
+      - name: Install pods
+        script: |
+          cd ios && pod install
+      - name: Set up keychain
+        script: keychain initialize
+      - name: Fetch signing files
+        script: |
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --strict-match-identifier \
+            --platform IOS \
+            --create
+      - name: Add certificates
+        script: keychain add-certificates
+      - name: Use profiles
+        script: |
+          xcode-project use-profiles \
+            --project ios/Runner.xcodeproj \
+            --export-options-plist $HOME/export_options.plist
+      - name: Build IPA
+        script: |
+          flutter build ipa --release \
+            --export-options-plist=$HOME/export_options.plist \
+            --build-name=1.0.0 \
+            --build-number=${BUILD_NUMBER:-$(date +%Y%m%d%H%M)}
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
+        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
+        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+        submit_to_testflight: true
+
+  fsts-android:
+    name: Seed to Supper Android
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    environment:
+      flutter: stable
+    scripts:
+      - name: Get packages
+        script: flutter pub get
+      - name: Build APK
+        script: flutter build apk --release
+    artifacts:
+      - build/app/outputs/flutter-apk/*.apk
