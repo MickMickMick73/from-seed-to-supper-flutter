@@ -83,9 +83,8 @@ workflows:
         api_key: $APP_STORE_CONNECT_PRIVATE_KEY
         key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
         issuer_id: $APP_STORE_CONNECT_ISSUER_ID
-        # Upload IPA only until TestFlight "Test Information" is filled on ASC
-        # (Feedback Email + Beta App Review contact). Then set true for auto-submit.
-        submit_to_testflight: false
+        # Test info is filled on ASC; auto-submit for TestFlight processing
+        submit_to_testflight: true
 
   fsts-android:
     name: Seed to Supper Android
