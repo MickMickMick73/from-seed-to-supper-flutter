@@ -38,10 +38,24 @@ workflows:
           # Generated.xcconfig is gitignored; flutter pub get already created it above
           test -f Flutter/Generated.xcconfig
           pod install --repo-update
+      - name: Check App Store Connect env
+        script: |
+          set -e
+          missing=0
+          for v in APP_STORE_CONNECT_ISSUER_ID APP_STORE_CONNECT_KEY_IDENTIFIER APP_STORE_CONNECT_PRIVATE_KEY CERTIFICATE_PRIVATE_KEY; do
+            if [ -z "${!v}" ]; then
+              echo "Missing env: $v (attach group 'global' on this app)"
+              missing=1
+            else
+              echo "OK $v is set"
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then exit 1; fi
       - name: Set up keychain
         script: keychain initialize
       - name: Fetch signing files
         script: |
+          set -e
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
             --type IOS_APP_STORE \
             --strict-match-identifier \
